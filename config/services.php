@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'sendbird' => [
+    'app_id' => env('98D69269-98AC-43CE-92EA-622E9038F231'),
+    'api_token' => env('fe12fad14050c8dccf1f5946915ea0ddd4241e1d'),
+],
+
 ];

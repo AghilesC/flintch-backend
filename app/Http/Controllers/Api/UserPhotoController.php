@@ -4,48 +4,54 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use App\Models\UserPhoto;
 
 class UserPhotoController extends Controller
 {
-    public function store(Request $request)
+    // Upload d’une nouvelle photo
+public function upload(Request $request)
+{
+    $request->validate([
+        'photo' => 'required|image|max:5120',
+    ]);
+
+    $user = $request->user();
+
+    $path = $request->file('photo')->store('images', 'public');
+    $url = asset('storage/' . $path);
+
+    $photo = new UserPhoto();
+    $photo->user_id = $user->id;
+    $photo->path = $path;
+    $photo->photo_url = $url; // ← CORRECTION ICI
+    $photo->is_main = !$user->photos()->exists();
+    $photo->save();
+
+    return response()->json([
+        'status' => true,
+        'message' => 'Photo uploaded',
+        'photo' => [
+            'id' => $photo->id,
+            'url' => $url,
+            'is_main' => $photo->is_main,
+        ]
+    ]);
+}
+
+
+    // Récupérer toutes les photos de l'utilisateur
+    public function getPhotos()
     {
-        if (!$request->hasFile('photo')) {
-            return response()->json(['status' => false, 'message' => 'Aucune photo envoyée.'], 400);
-        }
-
-        $file = $request->file('photo');
-
-        if (!$file->isValid()) {
-            return response()->json(['status' => false, 'message' => 'Fichier invalide.'], 400);
-        }
-
-        $filename = uniqid() . '.' . $file->getClientOriginalExtension();
-        $path = $file->storeAs('images', $filename, 'public');
-
-        $photo = $request->user()->photos()->create([
-            'photo_url' => url("/api/user/photo/$filename"), // ✅ route Laravel
-            'path' => $path,
-            'is_main' => $request->user()->photos()->count() === 0,
-        ]);
-
-        if ($photo->is_main) {
-            $user = $request->user();
-            $user->profile_photo = $photo->photo_url;
-            $user->save();
-        }
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Photo ajoutée',
-            'photo' => $photo,
-        ]);
-    }
-
-    public function index(Request $request)
-    {
-        $photos = $request->user()->photos()->get();
+        $user = Auth::user();
+        $photos = $user->photos()->get()->map(function ($photo) {
+            return [
+                'id' => $photo->id,
+                'is_main' => $photo->is_main,
+                'photo_url' => $photo->path ? Storage::url($photo->path) : null, // ✅ URL publique
+            ];
+        });
 
         return response()->json([
             'status' => true,
@@ -53,12 +59,14 @@ class UserPhotoController extends Controller
         ]);
     }
 
-    public function destroy(Request $request, $id)
+    // Supprimer une photo
+    public function deletePhoto($id)
     {
-        $photo = UserPhoto::where('user_id', $request->user()->id)->find($id);
+        $user = Auth::user();
+        $photo = UserPhoto::where('id', $id)->where('user_id', $user->id)->first();
 
         if (!$photo) {
-            return response()->json(['status' => false, 'message' => 'Photo non trouvée.'], 404);
+            return response()->json(['status' => false, 'message' => 'Photo not found'], 404);
         }
 
         if ($photo->path && Storage::disk('public')->exists($photo->path)) {
@@ -67,30 +75,45 @@ class UserPhotoController extends Controller
 
         $photo->delete();
 
-        return response()->json(['status' => true, 'message' => 'Photo supprimée.']);
+        return response()->json(['status' => true, 'message' => 'Photo deleted']);
     }
 
-    public function setMain(Request $request, $id)
+    // Définir une photo comme principale
+    public function setMainPhoto($id)
     {
-        $user = $request->user();
-
-        $photo = UserPhoto::where('user_id', $user->id)->find($id);
+        $user = Auth::user();
+        $photo = UserPhoto::where('id', $id)->where('user_id', $user->id)->first();
 
         if (!$photo) {
-            return response()->json(['status' => false, 'message' => 'Photo non trouvée.'], 404);
+            return response()->json(['status' => false, 'message' => 'Photo not found'], 404);
         }
 
-        $user->photos()->update(['is_main' => false]);
+        // Réinitialise les autres photos
+        UserPhoto::where('user_id', $user->id)->update(['is_main' => false]);
 
+        // Met celle-ci comme principale
         $photo->is_main = true;
         $photo->save();
 
-        $user->profile_photo = $photo->photo_url;
-        $user->save();
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Photo définie comme principale.',
-        ]);
+        return response()->json(['status' => true, 'message' => 'Main photo set']);
     }
+
+    public function index(Request $request)
+{
+    $user = $request->user();
+
+    $photos = $user->photos()->orderByDesc('is_main')->get()->map(function ($photo) {
+        return [
+            'id' => $photo->id,
+            'is_main' => $photo->is_main,
+            'url' => asset('storage/' . $photo->path),
+        ];
+    });
+
+    return response()->json([
+        'status' => true,
+        'photos' => $photos
+    ]);
+}
+
 }

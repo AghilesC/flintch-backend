@@ -5,6 +5,9 @@
 
     RewriteEngine On
 
+    # Autoriser l'accès public aux fichiers dans /storage
+    RewriteRule ^storage/(.*)$ storage/app/public/$1 [L]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

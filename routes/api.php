@@ -5,13 +5,12 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\UserPhotoController;
+use App\Http\Controllers\Api\MatchController;
+use App\Http\Controllers\Api\MessageController;
 
 // 🔓 Routes publiques
 Route::post('/social-login', [UserController::class, 'socialLogin']);
 Route::post('/social-register', [UserController::class, 'socialRegister']);
-
-
-
 
 // ✅ Route d’accès direct aux images (évite les 403)
 Route::get('/user/photo/{filename}', function ($filename) {
@@ -29,9 +28,8 @@ Route::get('/user/photo/{filename}', function ($filename) {
 
 // 🔐 Routes protégées par Sanctum
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/me', function (Request $request) {
-        return $request->user();
-    });
+    // 🔐 UserController
+    Route::get('/me', fn(Request $request) => $request->user());
 
     Route::get('/user', [UserController::class, 'me']);
     Route::post('/update-profile', [UserController::class, 'updateProfile']);
@@ -39,21 +37,29 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/upload-photo', [UserController::class, 'uploadPhoto']);
     Route::post('/set-preferences', [UserController::class, 'setPreferences']);
     Route::post('/set-location', [UserController::class, 'setLocation']);
-    Route::get('/discover', [UserController::class, 'discover']);
-    Route::post('/like', [UserController::class, 'likeUser']);
-    Route::post('/unlike', [UserController::class, 'unlikeUser']);
-    Route::get('/matches', [UserController::class, 'getMatches']);
     Route::post('/report-user', [UserController::class, 'reportUser']);
     Route::post('/block-user', [UserController::class, 'blockUser']);
     Route::post('/unblock-user', [UserController::class, 'unblockUser']);
+    Route::get('/blocked-users', [UserController::class, 'getBlockedUsers']);
     Route::post('/boost-profile', [UserController::class, 'boostProfile']);
     Route::post('/purchase-premium', [UserController::class, 'purchasePremium']);
     Route::post('/send-feedback', [UserController::class, 'sendFeedback']);
-    Route::get('/blocked-users', [UserController::class, 'getBlockedUsers']);
 
     // 🔄 Gestion des photos
     Route::get('/photos', [UserPhotoController::class, 'index']);
-    Route::post('/photos/upload', [UserPhotoController::class, 'store']);
+    Route::post('/photos/upload', [UserPhotoController::class, 'upload']);
     Route::post('/photos/set-main/{id}', [UserPhotoController::class, 'setMain']);
     Route::delete('/photos/{id}', [UserPhotoController::class, 'destroy']);
+
+    // ❤️ Match system (MatchController)
+    Route::get('/discover', [MatchController::class, 'getPotentialMatches']);
+    Route::post('/matches', [MatchController::class, 'createMatch']);
+    Route::post('/reject', [MatchController::class, 'rejectUser']);
+    Route::get('/matches', [MatchController::class, 'getMatches']);
+    Route::delete('/unmatch/{matchId}', [MatchController::class, 'unmatch']);
+
+    // 💬 Gestion des messages
+    Route::post('/messages/send', [MessageController::class, 'sendMessage']);
+    Route::get('/messages/{userId}', [MessageController::class, 'getMessagesWithUser']);
+    Route::get('/conversations', [MessageController::class, 'getConversations']);
 });

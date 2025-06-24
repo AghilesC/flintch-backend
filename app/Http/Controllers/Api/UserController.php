@@ -107,25 +107,26 @@ public function socialRegister(Request $request)
         'gender'         => 'nullable|string|max:50',
         'height'         => 'nullable|string|max:10',
         'weight'         => 'nullable|string|max:10',
+        'sports'         => 'nullable|array',
         'fitness_level'  => 'nullable|string|max:50',
         'goals'          => 'nullable|array',
         'provider'       => 'required|string|in:google,facebook',
         'provider_token' => 'required|string',
     ]);
 
-    // Important : goals doit être string ou array selon ta table
     $user = User::create([
         'name'           => $data['name'],
         'birthdate'      => $data['birthdate'],
         'email'          => $data['email'],
-        'password'       => bcrypt(Str::random(20)),
+        'password'       => bcrypt(\Illuminate\Support\Str::random(20)),
         'phone'          => $data['phone'] ?? null,
         'profile_photo'  => $data['profile_photo'] ?? null,
         'gender'         => $data['gender'] ?? null,
         'height'         => $data['height'] ?? null,
         'weight'         => $data['weight'] ?? null,
+        'sports'         => $data['sports'] ?? [],
         'fitness_level'  => $data['fitness_level'] ?? null,
-        'goals'          => isset($data['goals']) ? json_encode($data['goals']) : null,
+        'goals'          => $data['goals'] ?? [],
     ]);
 
     $tokenApi = $user->createToken('auth_token')->plainTextToken;
@@ -136,9 +137,6 @@ public function socialRegister(Request $request)
     ]);
 }
 
-
-
-
 public function updateProfile(Request $request)
 {
     $user = $request->user();
@@ -147,12 +145,11 @@ public function updateProfile(Request $request)
         'name'          => 'nullable|string|max:255',
         'birthdate'     => 'nullable|date',
         'gender'        => 'nullable|string|max:50',
-        'gender_other'  => 'nullable|string|max:100',
         'height'        => 'nullable|string|max:10',
         'weight'        => 'nullable|string|max:10',
         'sports'        => 'nullable|array',
         'fitness_level' => 'nullable|string|max:50',
-        'goals'         => 'nullable|string|max:255',
+        'goals'         => 'nullable|array',
         'availability'  => 'nullable|array',
         'location'      => 'nullable|string|max:255',
         'latitude'      => 'nullable|numeric',
@@ -161,7 +158,11 @@ public function updateProfile(Request $request)
         'profile_photo' => 'nullable|string|max:255',
     ]);
 
-    $user->update($data);
+    $user->update([
+        ...$data,
+        'sports' => $data['sports'] ?? $user->sports,
+        'goals'  => $data['goals'] ?? $user->goals,
+    ]);
 
     return response()->json([
         'status' => true,
@@ -169,6 +170,8 @@ public function updateProfile(Request $request)
         'user' => $user
     ]);
 }
+
+
 
 
     public function logout(Request $request)
