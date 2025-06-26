@@ -76,12 +76,13 @@ class MessageController extends Controller
                 // On continue pour sauvegarder le message localement
             }
 
-            // Sauvegarder en base de données locale
+            // ✅ Sauvegarder en base de données locale avec is_read = false par défaut
             $msg = Message::create([
                 'sender_id' => $sender->id,
                 'receiver_id' => $receiver->id,
                 'message' => $request->message,
                 'sent_at' => now(),
+                'is_read' => false, // ✅ Nouveau message = non lu
             ]);
 
             return response()->json([
@@ -110,6 +111,12 @@ class MessageController extends Controller
     {
         $authId = Auth::id();
 
+        // ✅ Marquer tous les messages de cet utilisateur comme lus quand on ouvre la conversation
+        Message::where('sender_id', $userId)
+            ->where('receiver_id', $authId)
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
         $messages = Message::where(function ($query) use ($authId, $userId) {
                 $query->where('sender_id', $authId)->where('receiver_id', $userId);
             })
@@ -126,6 +133,7 @@ class MessageController extends Controller
                     'receiver_id' => $msg->receiver_id,
                     'sent_at' => optional($msg->sent_at)->format('H:i'),
                     'created_at' => optional($msg->created_at)->format('H:i'),
+                    'is_read' => $msg->is_read, // ✅ Inclure le statut de lecture
                 ];
             });
 

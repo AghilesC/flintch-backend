@@ -14,9 +14,16 @@ class Message extends Model
         'receiver_id',
         'message',
         'sent_at',
+        'is_read', // ✅ Nouveau champ ajouté
     ];
 
     protected $dates = ['sent_at'];
+
+    // ✅ Ajout des casts pour is_read
+    protected $casts = [
+        'is_read' => 'boolean',
+        'sent_at' => 'datetime',
+    ];
 
     // Relations (facultatif si besoin plus tard)
     public function sender()

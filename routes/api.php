@@ -12,7 +12,7 @@ use App\Http\Controllers\Api\MessageController;
 Route::post('/social-login', [UserController::class, 'socialLogin']);
 Route::post('/social-register', [UserController::class, 'socialRegister']);
 
-// ✅ Route d’accès direct aux images (évite les 403)
+// ✅ Route d'accès direct aux images (évite les 403)
 Route::get('/user/photo/{filename}', function ($filename) {
     $path = 'images/' . $filename;
 
@@ -28,10 +28,14 @@ Route::get('/user/photo/{filename}', function ($filename) {
 
 // 🔐 Routes protégées par Sanctum
 Route::middleware('auth:sanctum')->group(function () {
-    // 🔐 UserController
-    Route::get('/me', fn(Request $request) => $request->user());
-
-    Route::get('/user', [UserController::class, 'me']);
+    // ✅ ROUTES UTILISATEUR PRINCIPALES
+    Route::get('/me', [UserController::class, 'me']);
+    Route::get('/user', [UserController::class, 'getAuthenticatedUser']);
+    
+    // ✅ ROUTE POUR AJOUTER DES DONNÉES DE TEST
+    Route::post('/user/test-data', [UserController::class, 'addTestData']);
+    
+    // Routes de mise à jour utilisateur
     Route::post('/update-profile', [UserController::class, 'updateProfile']);
     Route::post('/logout', [UserController::class, 'logout']);
     Route::post('/upload-photo', [UserController::class, 'uploadPhoto']);
@@ -57,6 +61,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/reject', [MatchController::class, 'rejectUser']);
     Route::get('/matches', [MatchController::class, 'getMatches']);
     Route::delete('/unmatch/{matchId}', [MatchController::class, 'unmatch']);
+    
+    // ✅ Routes pour marquer les conversations comme lues
+    Route::post('/matches/{id}/mark-read', [MatchController::class, 'markAsRead']);
 
     // 💬 Gestion des messages
     Route::post('/messages/send', [MessageController::class, 'sendMessage']);
